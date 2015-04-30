@@ -1,2 +1,2 @@
-# RSS-News-Spreeder
+# RSS News Spreeder
 A spreeder for the Pebble Smartwatch.
