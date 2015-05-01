@@ -43,15 +43,10 @@ if(!Settings.option('menu_items')) {
 	]);
 }
 
-//var settings_url = 'https://dvappel.me/stuff/spreeder-config.html#' + encodeURIComponent(JSON.stringify(Settings.option()));
-
-//console.log(settings_url);
-
 Settings.config(
 	{ url: 'https://dvappel.me/stuff/spreeder-config.html'},
 	function(e) {
 		console.log('opened config');
-		console.log(JSON.stringify(e));
 	},
 	function(e) {
 		console.log('closed config');
@@ -62,7 +57,6 @@ Settings.config(
 		} else {
 			Settings.option('menu_items', e.options);
 		}
-		console.log(e);
 	}
 );
 
@@ -104,12 +98,6 @@ function display_rss_feed(rss_feed) {
 
 	rss_menu.on('select', function(e) {
 
-		var process_content_callback = function(response) {
-			console.log(JSON.stringify(response));
-			var content = response.text;
-			read_content(content);
-		};
-
 		var article_sub_menu = new UI.Menu({
 			sections: [{
 				items:[
@@ -118,12 +106,13 @@ function display_rss_feed(rss_feed) {
 						content: e.item.title
 					},
 					{
-						title: 'Summary',
+						title: 'Content',
 						content: e.item.content
 					},
 					{
-						title: 'Full Article',
-						content: request_json(e.item.link, process_content_callback)
+						title: 'Parsed Article',
+						subtitle: 'AlchemyAPI',
+						content: e.item.link
 					}
 				]
 			}]
@@ -132,7 +121,11 @@ function display_rss_feed(rss_feed) {
 		article_sub_menu.show();
 		
 		article_sub_menu.on('select', function(e) {
-			read_content(e.item.content);
+			if(e.item.subtitle == 'AlchemyAPI') {
+				request_json(e.item.content, function(response) { read_content(response.text); });
+			} else {
+				read_content(e.item.content);	
+			}
 		});
 	});
 }
@@ -143,7 +136,7 @@ function get_menu_items_from_rss_feed(rss_feed) {
 	for(i = 0; i < rss_feed.length; i++) {
 		menu_items[i] = {
 			title: rss_feed[i].title,
-			content: rss_feed[i].contentSnippet,
+			content: rss_feed[i].content,
 			link: construct_readability_request_url(rss_feed[i].link),
 		};
 	}
@@ -195,15 +188,15 @@ function construct_readability_request_url(url) {
 
 function request_json(request_url, callback) {
 	ajax(
-	{
-		url: request_url,
-		type: 'json'
-	},
-	function(data, status, request) {
-		callback(data);
-	},
-	function(error, status, request) {
-		console.log(error);
-	}
+		{
+			url: request_url,
+			type: 'json'
+		},
+		function(data, status, request) {
+			callback(data);
+		},
+		function(error, status, request) {
+			console.log(error);
+		}
 	);
 }
