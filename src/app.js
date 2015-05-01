@@ -4,6 +4,7 @@ var ajax = require('ajax');
 var Vibe = require('ui/vibe');
 
 
+
 var main = new UI.Menu({
 	sections: [{
 		items: [
@@ -13,7 +14,7 @@ var main = new UI.Menu({
 			},
 			{
 				title: 'BBC',
-				url: 'http://ajax.googleapis.com/ajax/services/feed/load?v=1.0&num=10&q=http://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml?edition=int'
+				url: 'http://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml?edition=int'
 			},
 			{
 				title: 'NYT',
@@ -21,7 +22,7 @@ var main = new UI.Menu({
 			},
 			{
 				title: 'NPR',
-				url: 'http://ajax.googleapis.com/ajax/services/feed/load?v=1.0&num=10&q=http://www.npr.org/rss/rss.php?id=1001'
+				url: 'http://www.npr.org/rss/rss.php?id=1001'
 			},
 			{
 				title: 'AP',
@@ -29,7 +30,7 @@ var main = new UI.Menu({
 			},
 			{
 				title: 'USA TODAY',
-				url: 'http://ajax.googleapis.com/ajax/services/feed/load?v=1.0&num=10&q=http://rssfeeds.usatoday.com/usatoday-NewsTopStories'
+				url: 'http://rssfeeds.usatoday.com/usatoday-NewsTopStories'
 			},
 			{
 				title: 'WP',
@@ -58,6 +59,7 @@ main.on('select', function(e) {
 		} else {
 			return;
 		}
+		
 		display_rss_feed(rss_feed);
 	};
 	request_json(rss_url, rss_callback);
@@ -88,8 +90,42 @@ function display_rss_feed(rss_feed) {
 	rss_menu.show();
 
 	rss_menu.on('select', function(e) {
-		read_content(e.item.content);
+
+		var process_content_callback = function(response) {
+			console.log(JSON.stringify(response));
+			var content = response.text;
+			read_content(content);
+		};
+
+		var article_sub_menu = new UI.Menu({
+			sections: [{
+				items:[
+					{
+						title: 'Title',
+						content: e.item.title
+					},
+					{
+						title: 'Summary',
+						content: e.item.content
+					},
+					{
+						title: 'Full Article',
+						content: request_json(e.item.link, process_content_callback)
+					}
+				]
+			}]
+		});
+		
+		article_sub_menu.show();
+		
+		article_sub_menu.on('select', function(e) {
+			read_content(e.item.content);
+		});
 	});
+}
+
+function construct_readability_request_url(url) {
+	return 'http://access.alchemyapi.com/calls/url/URLGetText?apikey=2e290d8d3ec6fbb70b08debdbd67cca22f721e1f&outputMode=json&url=' + encodeURIComponent(url);
 }
 
 function get_menu_items_from_rss_feed(rss_feed) {
@@ -98,8 +134,8 @@ function get_menu_items_from_rss_feed(rss_feed) {
 	for(i = 0; i < rss_feed.length; i++) {
 		menu_items[i] = {
 			title: rss_feed[i].title,
-			content: rss_feed[i].content,
-			link: rss_feed[i].link,
+			content: rss_feed[i].contentSnippet,
+			link: construct_readability_request_url(rss_feed[i].link),
 		};
 	}
 	return menu_items;
@@ -114,44 +150,21 @@ function read_content(text) {
 		text: '',
 		textAlign: 'center'
 	});
-
+	
 	wind.add(textfield);
 	wind.show();
 	
 	text = text.split(' ');
-	
-	var contains_bad_strings = function(word) {
-		var bad_words = [
-			'<',
-			'="',
-			'\'',
-			'com',
-			'...',
-			'FULL',
-			'STORY',
-			'http://',
-		];
-		var i;
-		for( i = 0; i < bad_words.length; i++ ){
-			if(word.indexOf(bad_words[i]) > -1) {
-				return true;
-			}
-		}
-		return false;
-	};
+
 	
 	var show_words = function () {
 		var show_word = function(next_index) {
 			if(next_index < text.length) {
-				if( !contains_bad_strings(text[next_index]) ) {
-					textfield.text(text[next_index]);
-					wait_then_show_word(next_index + 1);
-				} else {
-					show_word(next_index + 1);
-				}
-			} else{
+				textfield.text(text[next_index]);
+				wait_then_show_word(next_index + 1);
+			} else {
 				Vibe.vibrate('long');
-				textfield.text('DONE!');
+				textfield.text('End of article');
 				setTimeout( function () {
 					textfield.remove();
 					wind.hide();
